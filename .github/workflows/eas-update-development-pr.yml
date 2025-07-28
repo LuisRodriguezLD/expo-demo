@@ -1,0 +1,50 @@
+name: EAS Update Development PR
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  update-development-pr:
+    permissions:
+      contents: read
+      pull-requests: write
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🏃‍♂️‍➡️ Run Linter
+        run: npm run lint
+
+      - name: 🏃‍♂️‍➡️ Run Jest
+        run: npm run test
+
+      - name: 🔎 Get latest commit message
+        id: get_commit
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "COMMIT_MSG=$COMMIT_MSG" >> $GITHUB_ENV
+
+      - name: 🚀 Create preview
+        uses: expo/expo-github-action/preview@v8
+        with:
+          command: eas update --auto --non-interactive --branch ${{ github.event.pull_request.head.ref }} --message "${{ env.COMMIT_MSG }}"
